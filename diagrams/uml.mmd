@@ -1,15 +1,46 @@
 classDiagram
-    %% Replace the placeholders below with your actual classes, attributes, methods, and relationships.
-    %% Keep this file updated so it matches your final implementation.
-
-    class ClassName {
-        +type attribute
-        +method() returnType
+    class User {
+        +int user_id
+        +string full_name
+        +string email
+        +string account
+        +List~Pet~ pets
+        +add_pet(pet Pet) void
+        +add_task(pet Pet, plan Plan, task Task) void
+        +edit_task(task Task) void
+        +delete_task(plan Plan, task Task) void
     }
 
-    class AnotherClass {
-        +type attribute
-        +method() returnType
+    class Pet {
+        +int pet_id
+        +string name
+        +date date_of_birth
+        +string gender
+        +string type
+        +List~Plan~ plans
+        +add_plan(plan Plan) void
+        +get_plan(date date) Plan
     }
 
-    ClassName --> AnotherClass : relationship
+    class Plan {
+        +date date
+        +List~Task~ tasks
+        +add_task(task Task) bool
+        +has_conflict(task Task) bool
+        +ordered_tasks() List~Task~
+    }
+
+    class Task {
+        +int task_id
+        +string name
+        +time start_time
+        +int duration
+        +string preferences
+        +bool priority
+        +end_time() time
+        +overlaps(other Task) bool
+    }
+
+    User "1" o-- "1..*" Pet : owns
+    Pet "1" *-- "1..*" Plan : has
+    Plan "1" *-- "1..*" Task : contains
