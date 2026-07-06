@@ -75,14 +75,15 @@ Sample test output:
 
 ## 📐 Smarter Scheduling
 
-> Fill in once you've implemented scheduling logic.
+PawPal+ goes beyond a flat task list with four scheduling behaviors, each implemented by a named method in [pawpal_system.py](pawpal_system.py):
 
 | Feature | Method(s) | Notes |
 |---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
-| Conflict handling | | e.g., overlapping time slots |
-| Recurring tasks | | e.g., daily vs. weekly |
+| Task sorting | `Scheduler.sort_by_time()`, `Scheduler.ordered_tasks()` | Chronological, or priority-first then chronological |
+| Filtering | `User.filter_tasks()` | By pet name and/or completion status |
+| Conflict handling | `Task.overlaps()`, `Scheduler.has_conflict()`, `User.check_conflicts()` | Overlaps within a plan and same-time clashes across the household |
+| Recurring tasks | `Task.mark_task_complete()` | `once` / `daily` / `weekly` via the `RECURRENCE` map |
+
 
 ## 📸 Demo Walkthrough
 

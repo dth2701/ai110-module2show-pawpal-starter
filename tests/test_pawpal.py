@@ -18,11 +18,11 @@ def make_task(task_id=1, start=time(9, 0), duration=30, priority="high"):
 
 
 def test_mark_complete_changes_status():
-    """Task Completion: mark_complete() flips the task's status."""
+    """Task Completion: mark_task_complete() flips the task's status."""
     task = make_task()
     assert task.status == "pending"
 
-    task.mark_complete()
+    task.mark_task_complete()
 
     assert task.status == "complete"
 
