@@ -104,10 +104,15 @@ PawPal+ goes beyond a flat task list with four scheduling behaviors, each implem
 
 Describe your app in numbered steps so a reader can follow along without watching a video:
 
-1. <!-- Describe this step -->
-2. <!-- Describe this step -->
-3. <!-- Describe this step -->
-4. <!-- Describe this step -->
-5. <!-- Add more steps as needed -->
+
+1. In **Owner**, set the owner's name (e.g. "Jordan").
+2. In **Add a Pet**, add *Biscuit* (dog) and *Mochi* (cat) — both appear in the pets table.
+3. In **Schedule a Task**, pick *Biscuit*, set "Morning walk" at 08:00 for 30 min, priority **high**, and click **Add task** — a green success toast confirms it.
+4. Add a couple more tasks (e.g. Feeding at 09:00, Playtime at 14:00), some for *Mochi*.
+5. In **Build Schedule**, choose *Biscuit* and today's date. Toggle **Sort by → Priority** vs **Start time** to see the ordering change, and watch for the amber **double-booked** warning if a Biscuit task overlaps a Mochi task.
+6. Open **Manage a task**, select a recurring task, and click **Mark done** — its next daily/weekly occurrence is scheduled automatically.
+7. In **Filter Tasks**, set Status = *complete* to confirm the task you just finished shows up.
+
 
 **Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->
+![alt text](image.png)

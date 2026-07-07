@@ -34,6 +34,8 @@ Yes, my design changed during implementation. The clearest change was making edi
 - What constraints does your scheduler consider (for example: time, priority, preferences)?
 - How did you decide which constraints mattered most?
 
+My scheduler enforces three constraints: the fixed 8am–5pm operating window, no time overlap within a pet's own plan, and no double-booking the same start time across the household. Priority (high/medium/low) and preferences are carried on each task but treated as ordering/display hints rather than hard blocks. I decided time validity mattered most because a schedule that physically can't happen is useless, so those checks hard-block an add, while priority only reorders what's already valid so the owner still sees the most urgent tasks first.
+
 **b. Tradeoffs**
 
 - Describe one tradeoff your scheduler makes.
@@ -51,12 +53,22 @@ It's reasonable because the exact-start-time rule captures the most common and m
 **a. How you used AI**
 
 - How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
+
+I mainly used AI for design brainstorming and refactoring. Early on it helped me pressure-test the class hierarchy and method signatures, and later it helped me tighten the scheduling logic and time-handling code for readability without changing behavior.
+
 - What kinds of prompts or questions were most helpful?
+
+Open-ended prompts like "How could this algorithm be simplified for better readability or performance?" were the most useful, because they surfaced options rather than a single fix. Asking it to explain the tradeoffs of a change, instead of just applying one, let me keep the decision in my own hands.
 
 **b. Judgment and verification**
 
 - Describe one moment where you did not accept an AI suggestion as-is.
+
+When refactoring conflict detection, AI suggested making the cross-pet `check_conflicts` do full interval-overlap math like the per-pet path. I chose not to, because the exact-start-time rule was simpler to explain to the owner and matched the mistakes people actually make, so I kept the coarser check and documented the gap instead.
+
 - How did you evaluate or verify what the AI suggested?
+
+I read through every suggested change line by line before accepting it, rather than applying anything wholesale. I also leaned on the test suite — running the sorting, recurrence, and conflict tests confirmed a refactor preserved behavior, and I even added a test that pins the known cross-pet limitation so the gap stays visible.
 
 ---
 
@@ -65,12 +77,22 @@ It's reasonable because the exact-start-time rule captures the most common and m
 **a. What you tested**
 
 - What behaviors did you test?
+
+I tested three behavior groups: sorting (chronological and priority-first ordering, including unpadded hours like "8:00"), recurrence (daily/weekly follow-ups, one-off tasks returning None, and unknown frequencies not recurring), and conflict detection (overlap rejection, adjacent tasks allowed, the 8am–5pm window boundaries, and same-start clashes across pets). Each group targets the tricky edge cases, not just the happy path.
+
 - Why were these tests important?
+
+These behaviors are the core scheduling logic — if sorting, recurrence, or conflict checks are wrong, the whole plan misleads the owner. Testing the edge cases (boundary times, unpadded hours, self-clash) protects against the subtle bugs that a happy-path demo would hide.
 
 **b. Confidence**
 
 - How confident are you that your scheduler works correctly?
+
+I'm fairly confident for the intended single-owner, few-pets use case, since all sorting, recurrence, and conflict tests pass and I have a test that deliberately pins the one known limitation. My confidence is bounded, though: I know cross-pet partial overlaps at different start times slip past `check_conflicts`, so it's correct within its documented scope rather than airtight.
+
 - What edge cases would you test next if you had more time?
+
+I'd test cross-pet partial overlaps (the documented gap), tasks that span awkwardly against the closing boundary, and editing a recurring task whose reused task_id collides with its next occurrence. I'd also add tests for filtering combinations and for adding many tasks in one day to check ordering stays stable.
 
 ---
 
@@ -80,10 +102,16 @@ It's reasonable because the exact-start-time rule captures the most common and m
 
 - What part of this project are you most satisfied with?
 
+I'm most satisfied with the conflict-detection design. Splitting it into a strict per-pet overlap check and a deliberately simpler household-wide same-start-time check let me block the mistakes people actually make while keeping the logic easy to explain, and I like that the code is honest about the one case it doesn't catch.
+
 **b. What you would improve**
 
 - If you had another iteration, what would you improve or redesign?
 
+I'd upgrade `check_conflicts` to reuse `Task.overlaps` so cross-pet partial overlaps are caught, closing the documented gap. I'd also give recurring tasks their own unique ids instead of reusing the parent's, so edit- and delete-by-id can tell two occurrences apart.
+
 **c. Key takeaway**
 
 - What is one important thing you learned about designing systems or working with AI on this project?
+
+The biggest lesson was to understand the requirements and the basic structure of the system before locking in a design, because a small misunderstanding forces changes that ripple through the classes and method signatures later. Thinking harder up front about what the app actually needs would have saved me from reworking method signatures and algorithms after the fact.

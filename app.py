@@ -115,6 +115,7 @@ else:
             preferences = st.text_input("Preferences", value="")
         with col3:
             priority = st.selectbox("Priority", ["low", "medium", "high"], index=2)
+            frequency = st.selectbox("Repeat", ["once", "daily", "weekly"], index=0)
 
         submitted_task = st.form_submit_button("Add task")
 
@@ -135,6 +136,10 @@ else:
             duration=int(duration),
             preferences=preferences,
             priority=priority,
+            frequency=frequency,
+            # Anchor recurrence to the scheduled day so mark_task_complete()
+            # advances the next occurrence from the right date.
+            due_date=day,
         )
 
         # User.add_task checks for same-time conflicts (this pet and every other
@@ -143,34 +148,132 @@ else:
         if added:
             st.session_state.next_task_id += 1
             st.success(message)
+            st.toast(f"Added '{task_title}' 🐾")
         else:
+            # Hard block: the task was NOT scheduled. Red + a concrete fix.
             st.error(message)
+            st.caption("Try a different start time, or shorten the task so it fits the 8am–5pm window.")
 
 st.divider()
 
 st.subheader("Build Schedule")
-st.caption("The selected pet's plan for a day, ordered by priority then start time.")
+st.caption("The selected pet's plan for a day. Sort it, spot conflicts, and mark tasks done.")
+
+# A one-shot message set just before an st.rerun() (e.g. after completing a
+# recurring task) so the outcome survives the rerun and shows here.
+if "flash" in st.session_state:
+    kind, text = st.session_state.pop("flash")
+    getattr(st, kind)(text)
 
 if user.pets:
     view_pet_name = st.selectbox("Show schedule for", [p.name for p in user.pets], key="view_pet")
     view_day = st.date_input("On day", value=date.today(), key="view_day")
+    # Two orderings the Scheduler exposes: by priority, or purely chronological.
+    sort_mode = st.radio("Sort by", ["Priority", "Start time"], horizontal=True, key="sort_mode")
 
     view_pet = next(p for p in user.pets if p.name == view_pet_name)
     plan = view_pet.get_plan(view_day)
 
+    # Household conflict check for the whole day. add_task blocks same-start-time
+    # clashes, but two pets can still hold tasks that overlap at *different*
+    # start times — Task.overlaps() catches those so the one owner sees them.
+    day_tasks = [
+        (p, t) for p in user.pets if p.get_plan(view_day) for t in p.get_plan(view_day).tasks
+    ]
+    clashes = [
+        (pa, ta, pb, tb)
+        for i, (pa, ta) in enumerate(day_tasks)
+        for pb, tb in day_tasks[i + 1:]
+        if ta.overlaps(tb)
+    ]
+    if clashes:
+        # Soft warning (amber), not an error: both tasks stay scheduled. We're
+        # telling the owner they'd be needed in two places at once, with enough
+        # detail — and a concrete fix — to resolve it.
+        st.warning(
+            f"⚠️ **You're double-booked on {view_day:%b %d}.** "
+            f"{len(clashes)} pair(s) of tasks overlap, so you'd be needed in two places at once."
+        )
+        with st.expander("Show the overlapping tasks", expanded=True):
+            for pa, ta, pb, tb in clashes:
+                st.markdown(
+                    f"- **{pa.name} · {ta.name}** ({ta.start_time}–{ta.end_time()}) "
+                    f"overlaps **{pb.name} · {tb.name}** ({tb.start_time}–{tb.end_time()})"
+                )
+            st.caption("Tip: stagger the start times or shorten one task so the two don't overlap.")
+    elif day_tasks:
+        # Reassure when the day is clean — as useful as flagging a clash.
+        st.success("✅ No scheduling conflicts for this day.")
+
     if plan and plan.tasks:
+        # Pick the Scheduler ordering that matches the toggle.
+        tasks = plan.ordered_tasks() if sort_mode == "Priority" else plan.sort_by_time()
+
+        st.caption(f"{len(tasks)} task(s), sorted by {sort_mode.lower()}.")
+        # A clean, static table for the read view; the recurrence marker rides
+        # in the task name so the schedule stays a single, scannable grid.
         st.table(
             [
                 {
                     "priority": t.priority,
-                    "task": t.name,
+                    "task": t.name + (f"  🔁 {t.frequency}" if t.frequency != "once" else ""),
                     "start": t.start_time,
                     "end": t.end_time(),
-                    "status": t.status,
+                    "status": "✅ complete" if t.status == "complete" else "⏳ pending",
                 }
-                for t in plan.ordered_tasks()
+                for t in tasks
             ]
         )
+
+        # Actions live below the table so the schedule itself stays uncluttered.
+        with st.expander("Manage a task"):
+            # Index-based selection avoids duplicate-label collisions.
+            idx = st.selectbox(
+                "Select a task",
+                range(len(tasks)),
+                format_func=lambda i: f"{tasks[i].start_time} · {tasks[i].name}"
+                + ("  ✅" if tasks[i].status == "complete" else ""),
+                key="manage_task",
+            )
+            target = tasks[idx]
+            mcol1, mcol2 = st.columns(2)
+            done_clicked = mcol1.button(
+                "✅ Mark done", key="mark_done", disabled=target.status == "complete"
+            )
+            del_clicked = mcol2.button("🗑️ Delete", key="del_task")
+
+            if done_clicked:
+                # mark_task_complete() flips status and, for a recurring task,
+                # hands back the next occurrence to schedule.
+                follow_up = target.mark_task_complete()
+                if follow_up is not None:
+                    next_day = follow_up.due_date
+                    next_plan = view_pet.get_plan(next_day)
+                    if next_plan is None:
+                        next_plan = Scheduler(date=next_day)
+                        view_pet.add_plan(next_plan)
+                    # Give the follow-up its own id so it doesn't collide.
+                    follow_up.task_id = st.session_state.next_task_id
+                    added, msg = user.add_task(view_pet, next_plan, follow_up)
+                    if added:
+                        st.session_state.next_task_id += 1
+                        st.session_state.flash = (
+                            "success",
+                            f"✅ Completed '{target.name}'. Next {target.frequency} occurrence set for {next_day}.",
+                        )
+                    else:
+                        st.session_state.flash = (
+                            "warning",
+                            f"Completed '{target.name}', but couldn't auto-schedule the next occurrence: {msg}",
+                        )
+                else:
+                    st.session_state.flash = ("success", f"✅ Marked '{target.name}' complete.")
+                st.rerun()
+
+            if del_clicked:
+                user.delete_task(plan, target)
+                st.session_state.flash = ("info", f"🗑️ Deleted '{target.name}'.")
+                st.rerun()
     else:
         st.info("No tasks scheduled for this pet on this day yet.")
 else:
@@ -195,14 +298,26 @@ if user.pets:
 
     matches = user.filter_tasks(status=status_filter, pet_name=pet_filter)
 
+    # filter_tasks() returns bare Tasks, but this view spans every pet and day,
+    # so map each task back to its owner to show a Pet column.
+    task_owner = {id(t): p.name for p in user.pets for t in p.all_tasks()}
+
     if matches:
+        # Sort the cross-day results by day, then start time (start_time is
+        # zero-padded "HH:MM", so a plain string sort is chronological).
+        matches = sorted(matches, key=lambda t: (t.due_date or date.min, t.start_time))
+        done = sum(1 for t in matches if t.status == "complete")
+        st.caption(f"{len(matches)} task(s) · {done} complete · {len(matches) - done} pending")
         st.table(
             [
                 {
+                    "pet": task_owner.get(id(t), "?"),
+                    "day": t.due_date,
                     "priority": t.priority,
                     "task": t.name,
                     "start": t.start_time,
                     "end": t.end_time(),
+                    "repeat": t.frequency,
                     "status": t.status,
                 }
                 for t in matches
