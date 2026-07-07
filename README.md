@@ -60,18 +60,33 @@ Daily plan for Mochi (cat):
 ## 🧪 Testing PawPal+
 
 ```bash
-# Run the full test suite:
-pytest
-
-# Run with coverage:
-pytest --cov
+ python -m pytest
 ```
 
 Sample test output:
 
 ```
-# Paste your pytest output here
+(.venv) (base) ➜  ai110-module2show-pawpal-starter git:(main) python -m pytest
+============================================ test session starts =============================================
+platform darwin -- Python 3.11.5, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/tdo/Desktop/AI110/Module 2/ai110-module2show-pawpal-starter
+plugins: anyio-4.14.1
+collected 24 items                                                                                           
+
+tests/test_pawpal.py ........................                                                          [100%]
+
+============================================= 24 passed in 0.01s =============================================
 ```
+
+- Foundations (2): completing a task flips its status; adding a task bumps the pet's task count.
+
+- Sorting (7): chronological order, unpadded hours ("8:00" before "14:00"), no mutation, empty plan, priority-before-time, tie-break by time, unknown priority sorts last.
+
+- Recurrence (7): daily→next day, weekly→+7 days, "once"→none, bad frequency→no recur, fields copied but reset to pending, no-due-date anchors to today, reused task_id.
+
+- Conflicts (8): overlap rejected, adjacent allowed, 8am–5pm window, same-start clash across pets, unpadded-time match, ignores self, add_task blocks with a message, plus one documenting the cross-pet overlap gap.
+
+- Confidence Level: 5 stars
 
 ## 📐 Smarter Scheduling
 
